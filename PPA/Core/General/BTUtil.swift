@@ -24,6 +24,12 @@ class BTUtil: NSObject {
     
     private lazy var btMgr: CBCentralManager = CBCentralManager(delegate: self, queue: DispatchQueue.main)
     
+    private lazy var dateFmt: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.timeZone = TimeZone(abbreviation: "GMT")
+        return formatter
+    }()
+    
     private var peripheral: CBPeripheral?
     private var characteristic: CBCharacteristic?
     
@@ -176,16 +182,14 @@ extension BTUtil {
         return String(format: "%03d", d) + sm
     }
     
-    private func crtTime() -> String {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "HHmmss.00"
-        return dateFormatter.string(from: Date())
+    func crtTime() -> String {
+        dateFmt.dateFormat = "HHmmss.00"
+        return dateFmt.string(from: Date())
     }
     
-    private func crtDate() -> String {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "ddMMyy"
-        return dateFormatter.string(from: Date())
+    func crtDate() -> String {
+        dateFmt.dateFormat = "ddMMyy"
+        return dateFmt.string(from: Date())
     }
     
     private func getBCC(_ str: String) -> String {
