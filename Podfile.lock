@@ -1,0 +1,34 @@
+PODS:
+  - AMap3DMap (10.0.900):
+    - AMapFoundation (>= 1.8.0)
+  - AMapFoundation (1.8.2)
+  - AMapLocation (2.10.0):
+    - AMapFoundation (>= 1.8.0)
+  - MBProgressHUD (1.2.0)
+  - MJRefresh (3.7.9)
+
+DEPENDENCIES:
+  - AMap3DMap
+  - AMapLocation
+  - MBProgressHUD
+  - MJRefresh
+
+SPEC REPOS:
+  https://github.com/CocoaPods/Specs.git:
+    - AMap3DMap
+    - MBProgressHUD
+    - MJRefresh
+  trunk:
+    - AMapFoundation
+    - AMapLocation
+
+SPEC CHECKSUMS:
+  AMap3DMap: 220e48934bc6553a15251c8c86f581a802787506
+  AMapFoundation: 9885c48fc3a78fdfb84a0299a2293e56ea3c9fec
+  AMapLocation: 5248aec2455ebb5d104b367813c946430a2ee033
+  MBProgressHUD: 3ee5efcc380f6a79a7cc9b363dd669c5e1ae7406
+  MJRefresh: ff9e531227924c84ce459338414550a05d2aea78
+
+PODFILE CHECKSUM: 574f7da9d6110354cb27507d4cd8855ebb2edc4c
+
+COCOAPODS: 1.16.2

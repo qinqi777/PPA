@@ -1,0 +1,478 @@
+BLE 接收器（从模块） ，广播名 Prazi Mushroom，搜索到从设备名前5个字母是 Prazi则显示在从设备列表中，点选则与之绑定；
+
+数据透传  UUID = "0000fff2-0000-1000-8000-00805f9b34fb"
+
+
+相机只能识别 NMEA 0183 协议的数据，所以，app从系统采集到位置数据后，还需要整理成 NMEA 0183语句，以4800bps， 1hz 透传给接收器：
+
+
+
+ private void sendGPSMSG(AMapLocation location){        //
+
+
+       StringBuilder sb = new StringBuilder(), sb1 = new StringBuilder(),sb2 = new StringBuilder();
+       String sLat,sLon;
+       if(GPSlat >= 0) {
+           sLat = D2DDm(GPSlat);
+       }
+       else {
+           sLat = "-" + D2DDm(GPSlat * (-1));
+       }
+       if(GPSlon >= 0) {
+           sLon = D2DDDm(GPSlon);
+       }
+       else {
+           sLon = "-" + D2DDDm(GPSlon * (-1));
+       }
+
+       sb.append("GPRMC,");
+       sb.append(crtTime);     
+       sb.append(",A,");
+       // 纬度 Latitude
+
+           sb.append(sLat).append(",");
+           sb.append("N,");
+
+       // 经度，Long
+           sb.append(sLon).append(",");
+           sb.append("E,");
+
+
+       sb.append("0.066,,");
+       sb.append(crtDate);// formatUTC(System.currentTimeMillis(),"ddMMyy"));
+
+       sb.append(",,,A");   // End of GPSMC
+
+
+       sb1.append("GPGGA,");
+       sb1.append(crtTime);//formatUTC(System.currentTimeMillis(),"HHmmss.00"))
+       sb1.append(",");
+
+       // 纬度 Latitude
+
+           sb1.append(sLat).append(",");
+           sb1.append("N,");
+       // 经度，Longitude
+           sb1.append(sLon).append(",");
+           sb1.append("E,");
+           sb1.append("1,");
+
+       if(location.getSatellites() < 10) sb1.append("0");
+
+       if(location.getSatellites()>5) sb1.append(location.getSatellites());
+       else sb1.append("5");
+               sb1.append(",1.48,");  // 卫星数
+
+       sb1.append(location.getAltitude()).append(",");     // 海拔
+
+       sb1.append("M,,M,,");
+
+       sb2.append("HCHDG,");
+
+       sb2.append(compassDegree);
+
+       sb2.append(",,,7,1,");
+       if(compassDegree > 0 ) sb2.append("W");
+       else  sb2.append("E");
+       String BCC = getBCC(sb.toString()).toUpperCase(), BCC1 = getBCC(sb1.toString()).toUpperCase(), BCC2 = getBCC(sb2.toString()).toUpperCase();
+
+
+       sb.append("*").append(BCC).append("\r\n");
+       sb1.append("*").append(BCC1).append("\r\n");
+       sb2.append("*").append(BCC2).append("\r\n");
+       String gpsStr = "$"+sb.toString()+"$" + sb1.toString() + "$" + sb2.toString();
+       BluetoothController.getInstance().sendGPS(gpsStr);
+
+       gpsLight.setVisibility(VISIBLE);
+       new Handler().postDelayed(() -> gpsLight.setVisibility(INVISIBLE), 200);
+
+
+
+
+
+   }
+
+    @SuppressLint("DefaultLocale")
+    private String D2DDm(double d_data){
+
+       int d = (int)d_data;
+       double m = ((d_data-d)*60);
+       String sm = format("%08.5f",m);
+       return format("%02d",d) + sm;
+    }
+    @SuppressLint("DefaultLocale")
+    private String D2DDDm(double d_data){
+
+        int d = (int)d_data;
+        double m = ((d_data-d)*60);
+        String sm = format("%08.5f",m);
+        return format("%03d",d) + sm;
+    }
+
+    private String getBCC(String txt) {
+        byte[] bytes = txt.getBytes();
+        byte bcc = 0;
+        for (byte aByte : bytes) {
+            bcc ^= aByte;
+        }
+
+
+        return Integer.toHexString(bcc);
+    }
+
+    private  String  getTime(Date d1){
+        @SuppressLint("SimpleDateFormat") SimpleDateFormat format=new SimpleDateFormat("HHmmss.00");
+        return format.format(d1);
+    }
+
+    private  String  getDate(Date d1){
+        @SuppressLint("SimpleDateFormat") SimpleDateFormat format=new SimpleDateFormat("ddMMyy");
+        return format.format(d1);
+    }
+
+    private  String  getDateTime(Date d1){
+        @SuppressLint("SimpleDateFormat") SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
+        return format.format(d1);
+    }
+
+
+    
+
+        if (localBluetoothGattService.getUuid().toString().equalsIgnoreCase(ConstantUtils.UUID_HLK))
+        {
+            List  localList = localBluetoothGattService.getCharacteristics();
+            for (Object o : localList)
+            {
+                BluetoothGattCharacteristic localBluetoothGattCharacteristic = (BluetoothGattCharacteristic) o;
+                if (localBluetoothGattCharacteristic.getUuid().toString().equalsIgnoreCase(ConstantUtils.UUID_GPS))
+                    bleGattCharacteristic = localBluetoothGattCharacteristic;
+                if (localBluetoothGattCharacteristic.getUuid().toString().equalsIgnoreCase(ConstantUtils.UUID_AT))
+                    bleGattCharacteristic1 = localBluetoothGattCharacteristic;
+            }
+            bleGatt.setCharacteristicNotification(bleGattCharacteristic1, true);
+            break;
+        }
+
+
+
+public class BluetoothController {
+    private String deviceAddress;
+    private String deviceName;
+
+    private BluetoothAdapter bleAdapter;
+    private Handler serviceHandler;
+
+    private static BluetoothGatt bleGatt;
+    private static BluetoothGattCharacteristic bleGattCharacteristic,bleGattCharacteristic1;
+
+
+    private static BluetoothController instance = null;
+    private boolean mushroom = true;
+    //private boolean AT = false;
+
+   // private boolean noService = true;
+
+    private BluetoothController() {
+    }
+
+    public static BluetoothController getInstance() {
+        if (instance == null)
+            instance = new BluetoothController();
+        return instance;
+    }
+
+
+    public boolean initBLE() {
+
+        if (!App.app.getPackageManager().hasSystemFeature(
+                PackageManager.FEATURE_BLUETOOTH_LE)) {
+            return true;
+        }
+
+        final BluetoothManager bluetoothManager = (BluetoothManager) App.app
+                .getSystemService(Context.BLUETOOTH_SERVICE);
+        assert bluetoothManager != null;
+        bleAdapter = bluetoothManager.getAdapter();
+
+        //return bleAdapter != null;
+        return false;
+    }
+
+
+    public void setServiceHandler(Handler handler) {
+
+        serviceHandler = handler;
+    }
+
+
+    private final BluetoothAdapter.LeScanCallback bleScanCallback = (device, arg1, arg2) -> {
+
+        String name = device.getName();
+        if (name == null)
+            return;
+        if (BluetoothController.this.serviceHandler != null
+                && !name.isEmpty()) {
+            Message msg = new Message();
+            msg.what = ConstantUtils.WM_UPDATE_BLE_LIST;
+            msg.obj = device;
+            BluetoothController.this.serviceHandler.sendMessage(msg);
+        }
+    };
+
+
+    public void startScanBLE() {
+        bleAdapter.startLeScan(bleScanCallback);
+
+        if (serviceHandler != null)
+            serviceHandler.sendEmptyMessageDelayed(
+                    ConstantUtils.WM_STOP_SCAN_BLE, 2000);
+
+    }
+
+
+    public void stopScanBLE() {
+        bleAdapter.stopLeScan(bleScanCallback);
+    }
+
+
+    public boolean isBleOpen() {
+        return bleAdapter.isEnabled();
+    }
+
+
+    public boolean connect(EntityDevice device) {
+        deviceAddress = device.getAddress();
+        deviceName = device.getName();
+        BluetoothDevice localBluetoothDevice = bleAdapter
+                .getRemoteDevice(device.getAddress());
+        if (bleGatt != null) {
+
+            bleGatt.disconnect();
+            bleGatt.close();
+            bleGatt = null;
+            return false;
+        }
+        //bleGatt = localBluetoothDevice.connectGatt(App.app, false,bleGattCallback);
+        bleGatt = localBluetoothDevice.connectGatt(App.app, true,bleGattCallback);
+       // bleGatt.requestMtu(deviceAddress);
+        return  true;
+    }
+
+
+    public void disConnect()
+    {
+        if (bleGatt != null) {
+
+            bleGatt.disconnect();
+            bleGatt.close();
+            bleGatt = null;
+        }
+    }
+
+    private final BluetoothGattCallback bleGattCallback = new BluetoothGattCallback() {
+
+        public void onCharacteristicChanged(
+                BluetoothGatt paramAnonymousBluetoothGatt,
+                BluetoothGattCharacteristic paramAnonymousBluetoothGattCharacteristic) {
+
+            byte[] arrayOfByte = paramAnonymousBluetoothGattCharacteristic
+                    .getValue();
+            if (BluetoothController.this.serviceHandler != null) {
+                Message msg = new Message();
+                msg.what = ConstantUtils.WM_RECEIVE_MSG_FROM_BLE;
+
+                msg.obj = ConvertUtils.getInstance().bytesToHexString(
+                        arrayOfByte);
+                BluetoothController.this.serviceHandler.sendMessage(msg);
+            }
+
+            Log.i("TEST",
+                    ConvertUtils.getInstance().bytesToHexString(arrayOfByte));
+        }
+
+        public void onCharacteristicRead(
+                BluetoothGatt paramAnonymousBluetoothGatt,
+                BluetoothGattCharacteristic paramAnonymousBluetoothGattCharacteristic,
+                int paramAnonymousInt) {
+        }
+
+        public void onCharacteristicWrite(
+                BluetoothGatt paramAnonymousBluetoothGatt,
+                BluetoothGattCharacteristic paramAnonymousBluetoothGattCharacteristic,
+                int paramAnonymousInt) {
+
+        }
+
+
+        public void onConnectionStateChange(
+                BluetoothGatt paramAnonymousBluetoothGatt, int oldStatus,
+                int newStatus) {
+            if (newStatus == 2)
+            {
+
+                Message msg = new Message();
+                msg.what = ConstantUtils.WM_BLE_CONNECTED_STATE_CHANGE;
+                Bundle bundle = new Bundle();
+                bundle.putString("address", deviceAddress);
+                bundle.putString("name", deviceName);
+                msg.obj = bundle;
+                serviceHandler.sendMessage(msg);
+
+                paramAnonymousBluetoothGatt.discoverServices();//TODO
+
+
+                return;
+            }
+            if (newStatus == 0)
+            {
+                serviceHandler.sendEmptyMessage(ConstantUtils.WM_STOP_CONNECT);
+                return;
+            }
+            paramAnonymousBluetoothGatt.disconnect();
+            paramAnonymousBluetoothGatt.close();
+        }
+
+        public void onDescriptorRead(BluetoothGatt paramAnonymousBluetoothGatt,
+                                     BluetoothGattDescriptor paramAnonymousBluetoothGattDescriptor,
+                                     int paramAnonymousInt) {
+        }
+
+        public void onDescriptorWrite(
+                BluetoothGatt paramAnonymousBluetoothGatt,
+                BluetoothGattDescriptor paramAnonymousBluetoothGattDescriptor,
+                int paramAnonymousInt) {
+        }
+
+        public void onReadRemoteRssi(BluetoothGatt paramAnonymousBluetoothGatt,
+                                     int paramAnonymousInt1, int paramAnonymousInt2) {
+        }
+
+        public void onReliableWriteCompleted(
+                BluetoothGatt paramAnonymousBluetoothGatt, int paramAnonymousInt) { }
+
+        public void onServicesDiscovered(
+                BluetoothGatt paramAnonymousBluetoothGatt, int paramAnonymousInt) {
+           // noService = false;
+            BluetoothController.this.findService(paramAnonymousBluetoothGatt
+                    .getServices());
+        }
+    };
+
+
+    public void sendGPS(String gpsStr){
+
+     if(mushroom)
+     {
+         if (null != bleGattCharacteristic && null != bleGatt) {
+             bleGattCharacteristic.setValue(gpsStr.getBytes());
+             bleGatt.writeCharacteristic(bleGattCharacteristic);
+         }
+     }
+     else {
+         int times;
+         List<String> tempStr = new ArrayList<>();
+         times = gpsStr.length() / 20;
+         //Toast.makeText(mContext, ""+times, Toast.LENGTH_SHORT).show();
+
+
+         for (int i = 0; i < times; i++) {
+             tempStr.add(gpsStr.substring(i * 20, (i * 20) + 20));
+         }
+
+         if (gpsStr.length() > times * 20) {
+
+             tempStr.add(gpsStr.substring(times * 20));
+
+             times++;
+         }
+
+         if (null != bleGattCharacteristic && null != bleGatt) {
+             for (int i = 0; i < times; i++) {
+                 try {
+                     Thread.sleep(20);
+                 } catch (InterruptedException e) {
+                     e.printStackTrace();
+                 }
+                // if(!AT) {
+                     bleGattCharacteristic.setValue(tempStr.get(i).getBytes());
+                     bleGatt.writeCharacteristic(bleGattCharacteristic);
+                // }
+             }
+         }
+     }
+    }//  end of send GPS
+
+
+    //public void sendGPS(String gpsStr){
+    //    if ( !AT && null != bleGattCharacteristic && null != bleGatt) {
+    //            bleGattCharacteristic.setValue(gpsStr.getBytes());
+    //            bleGatt.writeCharacteristic(bleGattCharacteristic);
+    //    }
+   // }//  end of send GPS
+
+
+
+
+    public boolean write(byte[] byteArray) {
+       // AT = true;
+      if(mushroom) {
+
+          if (bleGattCharacteristic1 == null)
+              return false;
+          if (bleGatt == null)
+              return false;
+
+          bleGattCharacteristic1.setValue(byteArray);
+          bleGatt.writeCharacteristic(bleGattCharacteristic1);
+      }
+      else
+      {if (bleGattCharacteristic == null)
+          return false;
+          if (bleGatt == null)
+              return false;
+          bleGattCharacteristic.setValue(byteArray);
+          bleGatt.writeCharacteristic(bleGattCharacteristic);
+      }
+      //  AT= false;
+        return true;
+    }
+
+    private void findService(List<BluetoothGattService> paramList) {
+        for (BluetoothGattService localBluetoothGattService : paramList) {
+            if (localBluetoothGattService.getUuid().toString().equalsIgnoreCase(ConstantUtils.UUID_HLK))
+            {
+                List  localList = localBluetoothGattService.getCharacteristics();
+                for (Object o : localList)
+                {
+                    BluetoothGattCharacteristic localBluetoothGattCharacteristic = (BluetoothGattCharacteristic) o;
+                    if (localBluetoothGattCharacteristic.getUuid().toString().equalsIgnoreCase(ConstantUtils.UUID_GPS))
+                        bleGattCharacteristic = localBluetoothGattCharacteristic;
+                    if (localBluetoothGattCharacteristic.getUuid().toString().equalsIgnoreCase(ConstantUtils.UUID_AT))
+                        bleGattCharacteristic1 = localBluetoothGattCharacteristic;
+                }
+                bleGatt.setCharacteristicNotification(bleGattCharacteristic1, true);
+                break;
+            }
+            if (localBluetoothGattService.getUuid().toString()
+                    .equalsIgnoreCase(ConstantUtils.UUID_HM)) {
+                mushroom = false;
+                List localListHM = localBluetoothGattService.getCharacteristics();
+                for (Object o : localListHM) {
+                    BluetoothGattCharacteristic localBluetoothGattCharacteristic = (BluetoothGattCharacteristic) o;
+                    if (localBluetoothGattCharacteristic.getUuid().toString()
+                            .equalsIgnoreCase(ConstantUtils.UUID_NOTIFY)
+                    ) {
+                        bleGattCharacteristic = localBluetoothGattCharacteristic;
+                        break;
+                    }
+                }
+                bleGatt.setCharacteristicNotification(bleGattCharacteristic, true);
+                break;
+            }
+
+        }
+
+    }
+
+}// End of BluetoothController
+　　
