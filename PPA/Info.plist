@@ -27,5 +27,13 @@
 		<string>location</string>
 		<string>bluetooth-central</string>
 	</array>
+	
+	<!-- 新增蓝牙权限描述 -->
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>该应用需要持续访问蓝牙以连接和管理设备。</string>
+
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>该应用需要访问蓝牙以连接和与设备通信。</string>
+	
 </dict>
 </plist>
