@@ -24,6 +24,7 @@ class DeviceViewController: UIViewController {
     }
     
     deinit {
+//        print("\(getCurDate()) deinit，移除监听器~~~")
         stopSendLocation()
         BTUtil.shared.removeListener(self)
     }
@@ -40,19 +41,32 @@ class DeviceViewController: UIViewController {
         if let location = location {
             mapView?.setCenter(location.coordinate, animated: true)
         }
+    private func getCurDate()  -> String {
+        // 获取当前系统时间
+        let currentDate = Date()
+        // 格式化时间输出
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"  // 设定日期格式
+        formatter.timeZone = TimeZone.current         // 使用系统当前时区
+        let dateString = formatter.string(from: currentDate)
+        return dateString
     }
     
     private func beginSendLocation() {
+//        print("\(getCurDate()) beginSendLocation，开始发送定位了~~~")
         stopSendLocation()
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+        timer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] timer in
             if let location = self?.location {
+//                print("beginSendLocation，定时器内部发送定位开始")
                 BTUtil.shared.sendLocation(location)
             }
         }
     }
     
     private func stopSendLocation() {
+//        print("\(getCurDate()) stopSendLocation")
         if timer?.isValid == true {
+//            print("\(getCurDate()) stopSendLocation+++取消了定时器")
             timer?.invalidate()
             timer = nil
         }

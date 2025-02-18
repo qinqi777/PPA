@@ -13,6 +13,7 @@ class ViewController: UIViewController {
     
     
     private weak var tableView: UITableView!
+
     
     private var dataArr = [CBPeripheral]()
     ///状态管理
@@ -30,6 +31,7 @@ class ViewController: UIViewController {
         return label
     }()
     
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.        
@@ -42,6 +44,7 @@ class ViewController: UIViewController {
         self.tableView = tableView
         
         tableView.tableFooterView = noDataLab
+
         
         BTUtil.shared.addListener(self)
         
